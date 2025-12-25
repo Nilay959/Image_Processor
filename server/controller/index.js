@@ -1,223 +1,120 @@
 const bcrypt = require("bcrypt");
-const mongoose = require("mongoose");
-const { User } = require("../model/index");
-const Image = require("../model/ImageModel"); 
-const { generateToken } = require("../middlewares/jwt");
 const sharp = require("sharp");
+const User = require("../model/index");
+const Image = require("../model/ImageModel");
+const { generateToken } = require("../middlewares/jwt");
 
-async function printHelloWorld(req, res) {
-  console.log("Jwt Payload =>", req.jwtPayload);
-  return res.json(req.jwtPayload);
-}
-
-async function deleteImage(req, res) {
-  try {
-    const id = req.params.id;
-    console.log("Deleting Image ID =>", id);
-
-    const deleted = await Image.findByIdAndDelete(id);
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Image not found" });
-    }
-
-    return res.json({ message: "Image deleted successfully" });
-  } catch (err) {
-    console.error("Delete error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function handleImageData(req, res) {
-  try {
-    const { images } = req.body;
-
-    if (!images || images.length === 0) {
-      return res.status(400).json({ message: "No images received" });
-    }
-
-    for (let img of images) {
-      await Image.create({ image: img });
-    }
-
-    return res.json({ message: "Images saved successfully!" });
-  } catch (err) {
-    console.error("Upload Error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-}
-
-async function getImages(req, res) {
-  try {
-    const data = await Image.find().sort({ createdAt: -1 });
-    return res.json(data);
-  } catch (err) {
-    console.error("GetImages error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-}
+/* ================= AUTH ================= */
 
 async function registerData(req, res) {
-  const body = req.body;
+  const { email, password } = req.body;
 
-  if (!body.email || !body.password) {
-    return res.json({ message: "undefined" });
-  }
+  if (!email || !password)
+    return res.status(400).json({ message: "Invalid data" });
 
-  const exists = await User.findOne({ email: body.email });
+  const exists = await User.findOne({ email });
+  if (exists)
+    return res.status(409).json({ message: "User already exists" });
 
-  if (exists) {
-    return res.json({ message: "undefined" });
-  }
+  const hashed = await bcrypt.hash(password, 10);
 
-  const hashed = await bcrypt.hash(body.password, 10);
-
-  const user = new User({
-    email: body.email,
-    password: hashed,
+  const user = await User.create({
+    email,
+    password: hashed
   });
 
-  await user.save();
-
-  return res.json({
-    email: user.email,
-    password: user.password,
-  });
+  res.json({ message: "Registered successfully" });
 }
 
 async function loginData(req, res) {
-  const body = req.body;
+  const { email, password } = req.body;
 
-  if (!body.email || !body.password) {
-    return res.json({ token: "undefined" });
-  }
+  const user = await User.findOne({ email });
+  if (!user)
+    return res.status(401).json({ message: "Invalid credentials" });
 
-  const user = await User.findOne({ email: body.email });
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch)
+    return res.status(401).json({ message: "Invalid credentials" });
 
-  if (!user) {
-    return res.json({ token: "undefined" });
-  }
-
-  const isMatch = await bcrypt.compare(body.password, user.password);
-
-  if (!isMatch) {
-    return res.json({ token: "undefined" });
-  }
-
-  const payload = {
+  const token = generateToken({
     id: user._id,
-    email: user.email,
-  };
+    email: user.email
+  });
 
-  const token = generateToken(payload);
+  res.json({ token });
+}
 
-  return res.json({ token });
+/* ================= IMAGES ================= */
+
+async function handleImageData(req, res) {
+  const { images } = req.body;
+
+  if (!images || images.length === 0)
+    return res.status(400).json({ message: "No images" });
+
+  for (const img of images) {
+    await Image.create({
+      image: img,
+      user: req.jwtPayload.id
+    });
+  }
+
+  res.json({ message: "Images uploaded" });
+}
+
+async function getImages(req, res) {
+  const images = await Image.find({
+    user: req.jwtPayload.id
+  }).sort({ createdAt: -1 });
+
+  res.json(images);
+}
+
+async function deleteImage(req, res) {
+  const { id } = req.params;
+
+  const deleted = await Image.findOneAndDelete({
+    _id: id,
+    user: req.jwtPayload.id
+  });
+
+  if (!deleted)
+    return res.status(404).json({ message: "Image not found" });
+
+  res.json({ message: "Image deleted" });
 }
 
 async function processImage(req, res) {
-  try {
-    const { image, operation, options } = req.body;
-    // console.log("IMage =",image);
-    // console.log("operation =",operation);
-    // console.log("options =",options);
-    if (!image) {
-      return res.status(400).json({ message: "No image provided" });
-    }
+  const { image, operation, options } = req.body;
 
-    if (!operation) {
-      return res.status(400).json({ message: "No operation selected" });
-    }
+  const base64 = image.replace(/^data:image\/\w+;base64,/, "");
+  let processed = sharp(Buffer.from(base64, "base64"));
 
-  const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-const imgBuffer = Buffer.from(base64Data, "base64");
-let processed = sharp(imgBuffer).rotate();
-
-    if (operation === "resize") {
-      processed = processed.resize({
-        width: options.width || null,
-        height: options.height || null,
-      });
-    }
-
-    if (operation === "crop") {
-      processed = processed.extract({
-        left: options.left || 0,
-        top: options.top || 0,
-        width: options.width || 200,
-        height: options.height || 200,
-      });
-    }
-
-    if (operation === "rotate") {
-      processed = processed.rotate(options.angle || 90);
-    }
-
-    if (operation === "flip") {
-      processed = processed.flip();
-    }
-
-    if (operation === "mirror") {
-      processed = processed.flop();
-    }
-
-    if (operation === "grayscale") {
-      processed = processed.grayscale();
-    }
-
-    if (operation === "sepia") {
-      processed = processed.tint({ r: 112, g: 66, b: 20 });
-    }
-
-    if (operation === "compress") {
-      processed = processed.jpeg({ quality: options?.quality || 70 });
-    }
-
-    if (operation === "format") {
-      const f = options.format || "png";
-
-      if (f === "jpeg") processed = processed.jpeg();
-      if (f === "png") processed = processed.png();
-      if (f === "webp") processed = processed.webp();
-    }
-
-    if (operation === "watermark") {
-      processed = await processed
-        .composite([
-          {
-            input: Buffer.from(
-              `<svg>
-                 <text x="10" y="50" font-size="40" fill="white" opacity="0.7">
-                   ${options.text || "Watermark"}
-                 </text>
-               </svg>`
-            ),
-            gravity: "southeast",
-          },
-        ])
-        .toBuffer();
-
-      const base64Out = `data:image/png;base64,${processed.toString("base64")}`;
-      return res.json({ processedImage: base64Out });
-    }
-    const outputBuffer = await processed.toBuffer();
-
-    const finalBase64 = `data:image/png;base64,${outputBuffer.toString(
-      "base64"
-    )}`;
-
-    return res.json({ processedImage: finalBase64 });
-  } catch (err) {
-    console.error("Process error:", err);
-    return res.status(500).json({ message: "Processing failed", error: err });
+  if (operation === "resize") {
+    processed = processed.resize(options.width, options.height);
   }
+
+  if (operation === "grayscale") {
+    processed = processed.grayscale();
+  }
+
+  const output = await processed.toBuffer();
+  res.json({
+    processedImage: `data:image/png;base64,${output.toString("base64")}`
+  });
+}
+
+async function printHelloWorld(req, res) {
+  res.json(req.jwtPayload);
 }
 
 module.exports = {
-  printHelloWorld,
   registerData,
   loginData,
   handleImageData,
   getImages,
   deleteImage,
   processImage,
+  printHelloWorld
 };

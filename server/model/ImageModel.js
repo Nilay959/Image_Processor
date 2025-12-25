@@ -2,9 +2,17 @@ const mongoose = require("mongoose");
 
 const imageSchema = new mongoose.Schema(
   {
-    image: { type: String, required: true },
-    processed: { type: String }, 
-    operation: { type: String }
+    image: {
+      type: String,
+      required: true
+    },
+    processed: String,
+    operation: String,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    }
   },
   { timestamps: true }
 );

@@ -1,21 +1,21 @@
-const express = require('express');
-const router = require('./routes/index');
-const configDB = require('./dbconfig');
-const dotenv = require('dotenv');
+const express = require("express");
 const cors = require("cors");
+const dotenv = require("dotenv");
+const configDB = require("./dbconfig");
+const router = require("./routes/index");
+
 dotenv.config();
 configDB();
 
+const app = express();
+const PORT = process.env.PORT || 8001;
 
-const server = express();
-const PORT = 8001;
+app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-server.use(cors());
-server.use(express.json({ limit: "50mb" }));
-server.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use("/url", router);
 
-server.use('/url', router);
-
-server.listen(PORT ,() => {
-    console.log("Server is listening on port 8001");
-})
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
