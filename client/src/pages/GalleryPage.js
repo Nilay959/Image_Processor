@@ -22,12 +22,7 @@ export default function GalleryPage() {
       }
 
       try {
-        // ✅ AUTH CHECK (validates JWT)
-        await axios.get(`${API}/url`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+       
 
         setAuthorized(true);
 
