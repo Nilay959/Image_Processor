@@ -12,7 +12,7 @@ const jwtAuthMiddleWare = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.jwtPayload = decoded; // { id, email }
+    req.jwtPayload = decoded; 
     next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });
