@@ -86,7 +86,7 @@ export default function ImageEditor() {
       const token = localStorage.getItem("token");
 
       await axios.post(
-        "http://localhost:8001/url/upload",
+        "https://image-processor-g0ls.onrender.com/url/upload",
         { images: [base64Image] },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -111,7 +111,7 @@ export default function ImageEditor() {
     console.log(options);
 
     const res = await axios.post(
-      "http://localhost:8001/url/process",
+      "https://image-processor-g0ls.onrender.com/url/process",
       {
         image: base64Image,
         operation,

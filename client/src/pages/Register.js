@@ -16,7 +16,7 @@ export default function Register() {
   try {
     console.log("IS FETCHING");
 
-    const res = await axios.post("http://localhost:8001/url/register", {
+    const res = await axios.post("https://image-processor-g0ls.onrender.com/url/register", {
       email,
       password,
     });

@@ -18,7 +18,7 @@ export default function Login() {
   try {
     console.log("IS FETCHING");
 
-    const res = await axios.post("http://localhost:8001/url/login", {
+    const res = await axios.post("https://image-processor-g0ls.onrender.com/url/login", {
       email,
       password,
     });

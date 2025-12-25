@@ -20,13 +20,13 @@ export default function GalleryPage() {
       }
 
       try {
-        await axios.get("http://localhost:8001/url/", {
+        await axios.get("https://image-processor-g0ls.onrender.com/", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         setAuthorized(true);
 
-        const res = await axios.get("http://localhost:8001/url/gallery", {
+        const res = await axios.get("https://image-processor-g0ls.onrender.com/url/gallery", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -56,7 +56,7 @@ export default function GalleryPage() {
       const token = localStorage.getItem("token");
       console.log(id);
 
-      await axios.delete(`http://localhost:8001/url/delete/${id}`, {
+      await axios.delete(`https://image-processor-g0ls.onrender.com/url/delete/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
