@@ -4,12 +4,14 @@ import { Navigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { message } from "antd";
 
+// 🔥 CHANGE THIS ONLY IF BACKEND URL CHANGES
+const API = "https://image-processor-g0ls.onrender.com";
+
 export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [images, setImages] = useState([]);
 
-  // AUTH CHECK + FETCH IMAGES
   useEffect(() => {
     const fetchImages = async () => {
       const token = localStorage.getItem("token");
@@ -20,19 +22,28 @@ export default function GalleryPage() {
       }
 
       try {
-        await axios.get("https://image-processor-g0ls.onrender.com/", {
-          headers: { Authorization: `Bearer ${token}` },
+        // ✅ AUTH CHECK (validates JWT)
+        await axios.get(`${API}/url`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         setAuthorized(true);
 
-        const res = await axios.get("https://image-processor-g0ls.onrender.com/url/gallery", {
-          headers: { Authorization: `Bearer ${token}` },
+        // ✅ FETCH USER IMAGES
+        const res = await axios.get(`${API}/url/gallery`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         setImages(res.data);
       } catch (err) {
         console.error("Error fetching images:", err);
+        message.error("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        setAuthorized(false);
       } finally {
         setLoading(false);
       }
@@ -41,28 +52,32 @@ export default function GalleryPage() {
     fetchImages();
   }, []);
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center text-xl">
         Loading...
       </div>
     );
+  }
 
-  if (!authorized) return <Navigate to="/login" replace />;
+  if (!authorized) {
+    return <Navigate to="/login" replace />;
+  }
 
-  // DELETE IMAGE FUNCTION
+  // 🗑️ DELETE IMAGE
   const deleteImage = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      console.log(id);
 
-      await axios.delete(`https://image-processor-g0ls.onrender.com/url/delete/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await axios.delete(`${API}/url/delete/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-      message.success("Image deleted!");
+      message.success("Image deleted successfully!");
 
-      // Remove image from UI without reload
+      // Remove from UI instantly
       setImages((prev) => prev.filter((img) => img._id !== id));
     } catch (err) {
       console.error("Delete failed:", err);
@@ -75,17 +90,21 @@ export default function GalleryPage() {
       <Navbar />
 
       <section className="px-10 py-20">
-        <h1 className="text-5xl font-light leading-tight mb-6">
+        <h1 className="text-5xl font-light mb-6">
           Your Uploaded Images
         </h1>
 
-        {/* IMAGE GALLERY GRID */}
+        {/* IMAGE GRID */}
         <div
           className="grid gap-6 mt-10"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}
+          style={{
+            gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+          }}
         >
           {images.length === 0 && (
-            <p className="text-gray-500 text-lg">No images uploaded yet.</p>
+            <p className="text-gray-500 text-lg">
+              No images uploaded yet.
+            </p>
           )}
 
           {images.map((img) => (
@@ -101,15 +120,17 @@ export default function GalleryPage() {
                 ✕
               </button>
 
-              {/* Base64 Image */}
-              {img.image?.startsWith("data") && (
-                <img src={img.image} className="w-full h-56 object-cover" />
-              )}
-
-              {/* Stored File URL */}
-              {!img.image?.startsWith("data") && (
+              {/* IMAGE DISPLAY */}
+              {img.image?.startsWith("data") ? (
                 <img
-                  src={`http://localhost:8001/${img.image}`}
+                  src={img.image}
+                  alt="Uploaded"
+                  className="w-full h-56 object-cover"
+                />
+              ) : (
+                <img
+                  src={`${API}/${img.image}`}
+                  alt="Uploaded"
                   className="w-full h-56 object-cover"
                 />
               )}
