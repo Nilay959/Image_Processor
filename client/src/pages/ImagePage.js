@@ -29,13 +29,13 @@ export default function ImageEditor() {
       }
 
       try {
-        await axios.get("http://localhost:8001/url/", {
+        await axios.get("https://image-processor-g0ls.onrender.com/url/", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         setAuthorized(true);
 
-        const res = await axios.get("http://localhost:8001/url/gallery", {
+        const res = await axios.get("https://image-processor-g0ls.onrender.com/url/gallery", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
